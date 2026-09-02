@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Header } from '@/components/Header';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { Wallet as WalletIcon, UploadCloud, Copy, CheckCircle, Clock, XCircle } from 'lucide-react';
 import Image from 'next/image';
 
@@ -11,7 +12,7 @@ export default function WalletPage() {
   const router = useRouter();
   
   const [amount, setAmount] = useState<string>('');
-  const [receiptUrl, setReceiptUrl] = useState<string>('');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -23,14 +24,22 @@ export default function WalletPage() {
 
   const handleTopup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !receiptUrl) return alert('الرجاء إدخال المبلغ ورابط صورة الإيصال');
-    
+    if (!amount || !receiptFile) return alert('الرجاء إدخال المبلغ واختيار صورة الإيصال');
+    if (!receiptFile.type.startsWith('image/') || receiptFile.size > 5 * 1024 * 1024) return alert('اختر صورة بحجم أقصى 5 ميجابايت');
     setIsSubmitting(true);
-    await submitTopup(Number(amount), receiptUrl);
-    setAmount('');
-    setReceiptUrl('');
+    try {
+      const path = `${user.id}/${crypto.randomUUID()}-${receiptFile.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+      const { error: uploadError } = await supabase.storage.from('receipts').upload(path, receiptFile, { contentType: receiptFile.type, upsert: false });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from('receipts').getPublicUrl(path);
+      await submitTopup(Number(amount), data.publicUrl);
+      setAmount('');
+      setReceiptFile(null);
+      const input = document.getElementById('receipt-file') as HTMLInputElement | null;
+      if (input) input.value = '';
+      alert('تم إرسال طلب الشحن بنجاح، سيتم مراجعته قريباً.');
+    } catch { alert('تعذر رفع الإيصال، حاول مرة أخرى.'); }
     setIsSubmitting(false);
-    alert('تم إرسال طلب الشحن بنجاح، سيتم مراجعته قريباً.');
   };
 
   const copyText = (text: string) => {
@@ -117,17 +126,16 @@ export default function WalletPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">رابط صورة الإيصال</label>
+                  <label htmlFor="receipt-file" className="block text-sm font-medium text-gray-300 mb-2">صورة إيصال التحويل</label>
                   <input
-                    type="url"
+                    id="receipt-file"
+                    type="file"
                     required
-                    value={receiptUrl}
-                    onChange={(e) => setReceiptUrl(e.target.value)}
-                    className="w-full bg-[#0B0B0E] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#D4AF37] text-left"
-                    placeholder="https://..."
-                    dir="ltr"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                    className="w-full bg-[#0B0B0E] border border-white/5 rounded-xl px-4 py-3 text-white file:ml-3 file:rounded-lg file:border-0 file:bg-[#D4AF37] file:px-3 file:py-2 file:font-bold file:text-[#0B0B0E]"
                   />
-                  <p className="text-xs text-gray-500 mt-2">مؤقتاً، يرجى رفع الصورة على مركز تحميل ولصق الرابط هنا.</p>
+                  <p className="text-xs text-gray-500 mt-2">PNG أو JPG أو WEBP، بحد أقصى 5 ميجابايت.</p>
                 </div>
                 
                 <button
