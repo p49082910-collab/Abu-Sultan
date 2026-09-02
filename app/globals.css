@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono-family);
+  --color-background: #0d0d0f;
+  --color-foreground: #f6f1e6;
+  --color-card: #17171b;
+  --color-card-foreground: #f6f1e6;
+  --color-primary: #d4af37;
+  --color-primary-foreground: #11100d;
+  --color-secondary: #242328;
+  --color-secondary-foreground: #f6f1e6;
+  --color-muted: #1d1d22;
+  --color-muted-foreground: #a9a5a0;
+  --color-border: #302e2b;
+  --color-ring: #d4af37;
+  --radius: 1rem;
+}
+
+:root { color-scheme: dark; }
+* { border-color: var(--color-border); }
+body { background: var(--color-background); color: var(--color-foreground); }
+::selection { background: #d4af37; color: #11100d; }
+
+.gold-shimmer { background: linear-gradient(110deg, #b78b22 0%, #f5d061 45%, #c79b2d 72%, #f5d061 100%); }
+.gold-text { background: linear-gradient(110deg, #d4af37, #f5d061); background-clip: text; color: transparent; }
+.surface-grid { background-image: linear-gradient(#ffffff05 1px, transparent 1px), linear-gradient(90deg, #ffffff05 1px, transparent 1px); background-size: 32px 32px; }
+.glow-border { box-shadow: 0 0 0 1px #d4af3730, 0 20px 60px #00000040; }
+@media (prefers-reduced-motion: no-preference) { .rise-in { animation: rise-in .7s ease-out both; } @keyframes rise-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } } }
+@media (max-width: 640px) { .surface-grid { background-size: 24px 24px; } }
+
+.font-mono { font-family: var(--font-mono-family), ui-monospace, monospace; }
+.font-sans { font-family: var(--font-body), ui-sans-serif, sans-serif; }
+.link-focus:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+input::placeholder { color: #8c8882; }
+nav a, button, a { transition: color .2s ease, background-color .2s ease, border-color .2s ease, transform .2s ease, opacity .2s ease; }
+button:active, a:active { transform: translateY(1px); }

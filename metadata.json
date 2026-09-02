@@ -1,0 +1,6 @@
+{
+  "name": "متجر أبو سلطان",
+  "description": "وجهتك الموثوقة لحسابات وأكواد الإنترنت المجاني الفورية",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
