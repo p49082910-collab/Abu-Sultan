@@ -1,6 +1,6 @@
-// The storefront runs in standalone demo mode when no integration is selected.
-// Keeping this narrow adapter preserves the store API without initializing a client.
-const unavailable = () => { throw new Error('Supabase integration is not enabled in demo mode.'); };
+import { createBrowserClient } from '@supabase/ssr'
 
-export const supabase = { from: unavailable } as any;
-export const supabaseAdmin = { from: unavailable } as any;
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://placeholder.supabase.co'
+const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'placeholder-key'
+
+export const supabase = createBrowserClient(url, key)

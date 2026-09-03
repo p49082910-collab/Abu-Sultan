@@ -1,103 +1,43 @@
-'use client';
-import { useState } from 'react';
-import { useAppStore } from '@/lib/store';
-import { Header } from '@/components/Header';
-import { useRouter } from 'next/navigation';
+'use client'
+import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { Header } from '@/components/Header'
+import { useRouter } from 'next/navigation'
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const { loginAsCustomer, loginAsAdmin } = useAppStore();
-  const router = useRouter();
+  const [isLogin, setIsLogin] = useState(true)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('')
+  const [phone, setPhone] = useState('')
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Simulate auth logic
-    if (identifier === 'admin') {
-      loginAsAdmin();
-      router.push('/admin');
-    } else {
-      loginAsCustomer();
-      router.push('/store');
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setMessage('')
+    const cleanEmail = email.trim()
+    const result = isLogin
+      ? await supabase.auth.signInWithPassword({ email: cleanEmail, password })
+      : await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+          options: {
+            emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback`,
+            data: { username: username || '', phone: phone || '' },
+          },
+        })
+    setBusy(false)
+    if (result.error) {
+      const errorText = result.error.message.toLowerCase()
+      setMessage(errorText.includes('confirm') ? 'يرجى تأكيد بريدك الإلكتروني أولاً.' : errorText.includes('password') || errorText.includes('credential') ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' : 'تعذر إتمام الطلب. حاول مرة أخرى.')
+      return
     }
-  };
+    if (isLogin) router.push('/store')
+    else setMessage('تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتأكيد الحساب.')
+  }
 
-  return (
-    <>
-      <Header />
-      <main className="flex-1 flex items-center justify-center p-4 min-h-[calc(100vh-80px)]">
-        <div className="w-full max-w-md bg-[#16161D] backdrop-blur-md border border-white/5 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#D4AF37] to-[#F5D061]"></div>
-          
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-20 h-20 flex items-center justify-center mb-4 drop-shadow-[0_0_20px_rgba(212,175,55,0.2)]">
-              <img src="/logo.png" alt="أبو سلطان" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(212,175,55,0.3)]" />
-            </div>
-            <h1 className="text-2xl font-bold text-white">
-              {isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
-            </h1>
-            <p className="text-gray-400 mt-2 text-sm text-center">
-              {isLogin ? 'أهلاً بك مجدداً في متجر أبو سلطان' : 'انضم إلينا واستمتع بأفضل العروض'}
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                {isLogin ? 'اسم المستخدم، البريد، أو رقم الهاتف' : 'اسم المستخدم'}
-              </label>
-              <input
-                type="text"
-                required
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                className="w-full bg-[#0B0B0E] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#D4AF37] transition-colors"
-                placeholder={isLogin ? 'أدخل بياناتك' : 'username'}
-                dir="ltr"
-              />
-            </div>
-
-            {!isLogin && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">البريد الإلكتروني</label>
-                  <input type="email" required className="w-full bg-[#0B0B0E] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#D4AF37] transition-colors" dir="ltr" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">رقم الهاتف</label>
-                  <input type="tel" required className="w-full bg-[#0B0B0E] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#D4AF37] transition-colors" dir="ltr" />
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">كلمة المرور</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#0B0B0E] border border-white/5 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#D4AF37] transition-colors"
-                dir="ltr"
-              />
-            </div>
-
-            <button type="submit" className="w-full mt-6 bg-gradient-to-r from-[#D4AF37] to-[#F5D061] text-[#0B0B0E] font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
-              {isLogin ? 'دخول' : 'تسجيل'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-gray-400 hover:text-[#D4AF37] transition-colors"
-            >
-              {isLogin ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول'}
-            </button>
-          </div>
-        </div>
-      </main>
-    </>
-  );
+  return <><Header /><main className="flex min-h-[calc(100vh-80px)] items-center justify-center p-4"><div className="w-full max-w-md rounded-3xl border border-border bg-card p-8 shadow-2xl"><div className="mb-8 text-center"><img src="/logo.png" alt="أبو سلطان" className="mx-auto size-20 object-contain" /><h1 className="mt-4 text-2xl font-bold">{isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}</h1><p className="mt-2 text-sm text-muted-foreground">{isLogin ? 'أهلاً بك مجدداً في متجر أبو سلطان' : 'انضم إلينا واستمتع بأفضل العروض'}</p></div><form onSubmit={submit} className="flex flex-col gap-4">{!isLogin && <><label className="flex flex-col gap-2 text-sm">اسم المستخدم<input type="text" value={username} onChange={e => setUsername(e.target.value)} className="rounded-xl border border-border bg-background px-4 py-3 outline-none focus:border-primary" /></label><label className="flex flex-col gap-2 text-sm">رقم الجوال<input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="rounded-xl border border-border bg-background px-4 py-3 text-left outline-none focus:border-primary" dir="ltr" /></label></>}<label className="flex flex-col gap-2 text-sm">البريد الإلكتروني<input required type="email" value={email} onChange={e => setEmail(e.target.value)} className="rounded-xl border border-border bg-background px-4 py-3 text-left outline-none focus:border-primary" dir="ltr" /></label><label className="flex flex-col gap-2 text-sm">كلمة المرور<input required minLength={6} type="password" value={password} onChange={e => setPassword(e.target.value)} className="rounded-xl border border-border bg-background px-4 py-3 text-left outline-none focus:border-primary" dir="ltr" /></label>{message && <p role="status" className="text-sm text-primary">{message}</p>}<button type="submit" disabled={busy} className="rounded-xl bg-primary py-3 font-bold text-primary-foreground disabled:opacity-60">{busy ? 'جاري المعالجة...' : isLogin ? 'دخول' : 'تسجيل'}</button></form><button type="button" onClick={() => { setIsLogin(value => !value); setMessage('') }} className="mt-6 w-full text-sm text-muted-foreground hover:text-primary">{isLogin ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول'}</button></div></main></>
 }
