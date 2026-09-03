@@ -5,15 +5,21 @@ import { Header } from '@/components/Header';
 import { useRouter } from 'next/navigation';
 import { BarChart3, PackageSearch, Users, Settings, Database, Plus, Check, X } from 'lucide-react';
 import Image from 'next/image';
+import { supabase } from '@/lib/supabase';
+import type { Profile } from '@/lib/types';
 
 export default function AdminPage() {
   const { user, products, inventory, topupRequests, orders, settings, fetchInitialData } = useAppStore();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
+  const [users, setUsers] = useState<Profile[]>([]);
+  const [userSearch, setUserSearch] = useState('');
 
   useEffect(() => {
     if (!user || user.role !== 'admin') router.push('/');
     fetchInitialData();
+    if (user?.role === 'admin') supabase.from('profiles').select('id,email,username,phone,role,balance,created_at').order('created_at', { ascending: false }).then(({ data }) => setUsers((data ?? []) as Profile[]));
   }, [user, router, fetchInitialData]);
 
   if (!user || user.role !== 'admin') return null;
@@ -33,6 +39,7 @@ export default function AdminPage() {
             <TabButton icon={<BarChart3 />} label="نظرة عامة" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
             <TabButton icon={<PackageSearch />} label="المنتجات" active={activeTab === 'products'} onClick={() => setActiveTab('products')} />
             <TabButton icon={<Database />} label="المخزون الرقمي" active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} />
+            <TabButton icon={<Users />} label="المستخدمون" active={activeTab === 'users'} onClick={() => setActiveTab('users')} badge={users.length} />
             <TabButton icon={<Users />} label="طلبات الشحن" active={activeTab === 'topups'} onClick={() => setActiveTab('topups')} badge={pendingTopups} />
             <TabButton icon={<Settings />} label="إعدادات الموقع" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
           </div>
@@ -117,6 +124,14 @@ export default function AdminPage() {
              </div>
           )}
 
+          {activeTab === 'users' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white">إدارة المستخدمين</h2>
+              <input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="ابحث بالاسم أو البريد أو الجوال" className="w-full rounded-xl border border-white/10 bg-[#16161D] px-4 py-3 text-white outline-none focus:border-[#D4AF37]" />
+              <div className="overflow-x-auto rounded-3xl border border-white/5 bg-[#16161D]"><table className="w-full text-right text-sm" dir="rtl"><thead className="border-b border-white/5 text-gray-400"><tr><th className="p-4">المستخدم</th><th className="p-4">التواصل</th><th className="p-4">الدور</th><th className="p-4">الرصيد</th><th className="p-4">تاريخ التسجيل</th></tr></thead><tbody className="divide-y divide-white/5">{users.filter((profile) => [profile.username, profile.email, profile.phone].join(' ').toLowerCase().includes(userSearch.toLowerCase())).map((profile) => <tr key={profile.id}><td className="p-4 font-bold text-white">{profile.username || 'بدون اسم'}</td><td className="p-4 text-gray-400" dir="ltr">{profile.email || profile.phone || '-'}</td><td className="p-4 text-[#F5D061]">{profile.role}</td><td className="p-4 text-white">{profile.balance} ﷼</td><td className="p-4 text-gray-400">{new Date(profile.created_at).toLocaleDateString('ar-SA')}</td></tr>)}</tbody></table></div>
+            </div>
+          )}
+
           {activeTab === 'topups' && (
              <div className="space-y-8">
                <h2 className="text-2xl font-bold text-white mb-6">طلبات الشحن البنكي</h2>
@@ -126,6 +141,7 @@ export default function AdminPage() {
                      <div className="w-full sm:w-32 aspect-video bg-[#0B0B0E] rounded-lg relative overflow-hidden shrink-0 border border-white/5">
                         {req.receipt_image && <Image src={req.receipt_image} alt="Receipt" fill className="object-cover" referrerPolicy="no-referrer" />}
                      </div>
+                     <button type="button" onClick={() => req.receipt_image && setSelectedReceipt(req.receipt_image)} disabled={!req.receipt_image} className="rounded-xl border border-[#D4AF37]/30 px-3 py-2 text-sm text-[#F5D061] disabled:cursor-not-allowed disabled:opacity-40">عرض الإثبات</button>
                      <div className="flex-1 text-center sm:text-right">
                        <p className="text-gray-400 text-xs mb-1">تاريخ الطلب: {new Date(req.created_at).toLocaleDateString('ar-SA')}</p>
                        <p className="text-xl font-bold text-[#F5D061] mb-2">{req.amount} <span className="text-[10px]">SAR</span></p>
@@ -179,6 +195,14 @@ export default function AdminPage() {
         </div>
 
       </main>
+      {selectedReceipt && (
+        <div role="dialog" aria-modal="true" aria-label="معاينة إثبات التحويل" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setSelectedReceipt(null)}>
+          <div className="relative flex max-h-[90vh] max-w-4xl items-center justify-center rounded-2xl bg-[#16161D] p-4" onClick={(event) => event.stopPropagation()}>
+            {selectedReceipt.toLowerCase().includes('.pdf') ? <iframe title="إثبات التحويل" src={selectedReceipt} className="h-[75vh] w-[min(80vw,800px)] rounded-xl" /> : <Image src={selectedReceipt} alt="إثبات التحويل" width={1200} height={900} className="max-h-[80vh] w-auto rounded-xl object-contain" />}
+            <button type="button" onClick={() => setSelectedReceipt(null)} className="absolute -right-3 -top-3 rounded-full bg-[#D4AF37] px-3 py-1 font-bold text-black">إغلاق</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

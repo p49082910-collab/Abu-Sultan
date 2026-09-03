@@ -24,8 +24,9 @@ export default function WalletPage() {
 
   const handleTopup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !receiptFile) return alert('الرجاء إدخال المبلغ واختيار صورة الإيصال');
-    if (!receiptFile.type.startsWith('image/') || receiptFile.size > 5 * 1024 * 1024) return alert('اختر صورة بحجم أقصى 5 ميجابايت');
+    if (!amount || !receiptFile) return alert('الرجاء إدخال المبلغ واختيار ملف الإيصال');
+    const isAllowedFile = receiptFile.type.startsWith('image/') || receiptFile.type === 'application/pdf';
+    if (!isAllowedFile || receiptFile.size > 5 * 1024 * 1024) return alert('اختر صورة أو PDF بحجم أقصى 5 ميجابايت');
     setIsSubmitting(true);
     try {
       const path = `${user.id}/${crypto.randomUUID()}-${receiptFile.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
@@ -131,11 +132,11 @@ export default function WalletPage() {
                     id="receipt-file"
                     type="file"
                     required
-                    accept="image/png,image/jpeg,image/webp"
+                    accept="image/*,application/pdf"
                     onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
                     className="w-full bg-[#0B0B0E] border border-white/5 rounded-xl px-4 py-3 text-white file:ml-3 file:rounded-lg file:border-0 file:bg-[#D4AF37] file:px-3 file:py-2 file:font-bold file:text-[#0B0B0E]"
                   />
-                  <p className="text-xs text-gray-500 mt-2">PNG أو JPG أو WEBP، بحد أقصى 5 ميجابايت.</p>
+                  <p className="text-xs text-gray-500 mt-2">صور أو PDF، بحد أقصى 5 ميجابايت.</p>
                 </div>
                 
                 <button
