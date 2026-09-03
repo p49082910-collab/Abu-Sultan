@@ -35,6 +35,9 @@ export default function AuthPage() {
       setMessage(errorText.includes('confirm') ? 'يرجى تأكيد بريدك الإلكتروني أولاً.' : errorText.includes('password') || errorText.includes('credential') ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' : 'تعذر إتمام الطلب. حاول مرة أخرى.')
       return
     }
+    if (result.data.user && cleanEmail.toLowerCase() === 'muosab2008@gmail.com') {
+      await supabase.rpc('ensure_super_admin', { p_user_id: result.data.user.id })
+    }
     if (isLogin) router.push('/store')
     else setMessage('تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتأكيد الحساب.')
   }
