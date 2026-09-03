@@ -15,6 +15,7 @@ export default function AdminPage() {
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
   const [users, setUsers] = useState<Profile[]>([]);
   const [userSearch, setUserSearch] = useState('');
+  const [roleBusy, setRoleBusy] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') router.push('/');
@@ -23,6 +24,17 @@ export default function AdminPage() {
   }, [user, router, fetchInitialData]);
 
   if (!user || user.role !== 'admin') return null;
+
+  async function changeRole(profile: Profile) {
+    const nextRole = profile.role === 'admin' ? 'customer' : 'admin';
+    if (profile.email?.toLowerCase() === 'muosab2008@gmail.com' && nextRole !== 'admin') return;
+    setRoleBusy(profile.id);
+    const { data, error } = await supabase.rpc('set_user_role', { p_target_user_id: profile.id, p_role: nextRole });
+    setRoleBusy(null);
+    if (error || !data) return alert('تعذر تحديث الصلاحية.');
+    setUsers((current) => current.map((item) => item.id === profile.id ? { ...item, role: nextRole } : item));
+    alert('تم تحديث الصلاحية بنجاح');
+  }
 
   const totalSales = orders.reduce((sum, ord) => sum + ord.amount_paid, 0);
   const totalTopups = topupRequests.filter(r => r.status === 'approved').reduce((sum, req) => sum + req.amount, 0);
@@ -128,7 +140,7 @@ export default function AdminPage() {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-white">إدارة المستخدمين</h2>
               <input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="ابحث بالاسم أو البريد أو الجوال" className="w-full rounded-xl border border-white/10 bg-[#16161D] px-4 py-3 text-white outline-none focus:border-[#D4AF37]" />
-              <div className="overflow-x-auto rounded-3xl border border-white/5 bg-[#16161D]"><table className="w-full text-right text-sm" dir="rtl"><thead className="border-b border-white/5 text-gray-400"><tr><th className="p-4">المستخدم</th><th className="p-4">التواصل</th><th className="p-4">الدور</th><th className="p-4">الرصيد</th><th className="p-4">تاريخ التسجيل</th></tr></thead><tbody className="divide-y divide-white/5">{users.filter((profile) => [profile.username, profile.email, profile.phone].join(' ').toLowerCase().includes(userSearch.toLowerCase())).map((profile) => <tr key={profile.id}><td className="p-4 font-bold text-white">{profile.username || 'بدون اسم'}</td><td className="p-4 text-gray-400" dir="ltr">{profile.email || profile.phone || '-'}</td><td className="p-4 text-[#F5D061]">{profile.role}</td><td className="p-4 text-white">{profile.balance} ﷼</td><td className="p-4 text-gray-400">{new Date(profile.created_at).toLocaleDateString('ar-SA')}</td></tr>)}</tbody></table></div>
+              <div className="overflow-x-auto rounded-3xl border border-white/5 bg-[#16161D]"><table className="w-full text-right text-sm" dir="rtl"><thead className="border-b border-white/5 text-gray-400"><tr><th className="p-4">المستخدم</th><th className="p-4">التواصل</th><th className="p-4">الدور</th><th className="p-4">الرصيد</th><th className="p-4">تاريخ التسجيل</th><th className="p-4">الإجراء</th></tr></thead><tbody className="divide-y divide-white/5">{users.filter((profile) => [profile.username, profile.email, profile.phone].join(' ').toLowerCase().includes(userSearch.toLowerCase())).map((profile) => { const isSuperAdmin = profile.email?.toLowerCase() === 'muosab2008@gmail.com'; return <tr key={profile.id}><td className="p-4 font-bold text-white">{profile.username || 'بدون اسم'}</td><td className="p-4 text-gray-400" dir="ltr">{profile.email || profile.phone || '-'}</td><td className="p-4"><span className={`rounded-full px-3 py-1 text-xs font-bold ${profile.role === 'admin' ? 'bg-[#D4AF37]/20 text-[#F5D061]' : 'bg-white/10 text-gray-300'}`}>{profile.role}</span></td><td className="p-4 text-white">{profile.balance} ﷼</td><td className="p-4 text-gray-400">{new Date(profile.created_at).toLocaleDateString('ar-SA')}</td><td className="p-4"><button type="button" disabled={isSuperAdmin || roleBusy === profile.id} onClick={() => changeRole(profile)} className="rounded-xl border border-[#D4AF37]/30 px-3 py-2 text-xs font-bold text-[#F5D061] disabled:cursor-not-allowed disabled:opacity-35">{roleBusy === profile.id ? 'جاري التحديث...' : profile.role === 'admin' ? 'سحب صلاحية الأدمن' : 'ترقية إلى أدمن'}</button></td></tr>})}</tbody></table></div>
             </div>
           )}
 
