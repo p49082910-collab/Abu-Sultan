@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Header } from '@/components/Header';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { ShoppingCart, CheckCircle, AlertCircle, Copy } from 'lucide-react';
+import { ShoppingCart, CheckCircle, AlertCircle, Copy, PackageSearch } from 'lucide-react';
 import { DigitalInventory } from '@/lib/types';
 
 export default function StorePage() {
@@ -111,7 +110,7 @@ export default function StorePage() {
             return (
               <div key={product.id} className="bg-[#16161D] rounded-3xl p-6 border border-white/5 hover:border-[#D4AF37]/40 transition-all group flex flex-col">
                 <div className="w-full aspect-[4/3] bg-[#0B0B0E] rounded-2xl mb-5 flex items-center justify-center overflow-hidden relative">
-                  <Image src={product.image_url} alt={product.name} fill className="object-cover" referrerPolicy="no-referrer" />
+                  {product.image_url ? <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} /> : <PackageSearch className="text-gray-600" size={32} />}
                   <div className="absolute top-3 right-3">
                     <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${isAvailable ? 'bg-[#D4AF37] text-[#0B0B0E]' : 'bg-gray-600 text-white'}`}>
                       {isAvailable ? 'متوفر' : 'نفد'}

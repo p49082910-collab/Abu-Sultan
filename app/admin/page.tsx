@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { BarChart3, PackageSearch, Users, Settings, Database, Plus, Check, X } from 'lucide-react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
-import type { Profile } from '@/lib/types';
+import type { Profile, Product, DigitalInventory } from '@/lib/types';
 
 export default function AdminPage() {
   const { user, products, inventory, topupRequests, orders, settings, fetchInitialData } = useAppStore();
@@ -16,6 +16,12 @@ export default function AdminPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [roleBusy, setRoleBusy] = useState<string | null>(null);
+  const [productForm, setProductForm] = useState({ name: '', description: '', price: '', sale_price: '', image_url: '', is_active: true });
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productBusy, setProductBusy] = useState(false);
+  const [inventoryProduct, setInventoryProduct] = useState('');
+  const [inventoryText, setInventoryText] = useState('');
+  const [inventoryBusy, setInventoryBusy] = useState(false);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') router.push('/');
@@ -36,6 +42,26 @@ export default function AdminPage() {
     alert('تم تحديث الصلاحية بنجاح');
   }
 
+  async function saveProduct(event: React.FormEvent) {
+    event.preventDefault();
+    if (!productForm.name.trim() || !productForm.price || Number(productForm.price) <= 0) return alert('أدخل اسم المنتج وسعراً صحيحاً.');
+    setProductBusy(true);
+    const payload = { name: productForm.name.trim(), description: productForm.description.trim(), price: Number(productForm.price), sale_price: productForm.sale_price ? Number(productForm.sale_price) : null, image_url: productForm.image_url.trim() || null, is_active: productForm.is_active };
+    const query = editingProduct ? supabase.from('products').update(payload).eq('id', editingProduct.id).select('id,name,description,image_url,price,sale_price,is_active,is_deal,created_at').single() : supabase.from('products').insert(payload).select('id,name,description,image_url,price,sale_price,is_active,is_deal,created_at').single();
+    const { data, error } = await query;
+    setProductBusy(false);
+    if (error || !data) return alert('تعذر حفظ المنتج. تحقق من الحقول والصلاحيات.');
+    useAppStore.setState((state) => ({ products: editingProduct ? state.products.map((item) => item.id === editingProduct.id ? data as Product : item) : [data as Product, ...state.products] }));
+    setProductForm({ name: '', description: '', price: '', sale_price: '', image_url: '', is_active: true }); setEditingProduct(null); alert('تم حفظ المنتج.');
+  }
+  async function addInventory(event: React.FormEvent) {
+    event.preventDefault(); const codes = inventoryText.split(/\\r?\\n/).map((code) => code.trim()).filter(Boolean);
+    if (!inventoryProduct || !codes.length) return alert('اختر منتجاً وأدخل كوداً واحداً على الأقل.');
+    setInventoryBusy(true); const rows = codes.map((code) => ({ product_id: inventoryProduct, code, is_sold: false }));
+    const { data, error } = await supabase.from('digital_inventory').insert(rows).select('id,product_id,code,is_sold,sold_to,sold_at,created_at'); setInventoryBusy(false);
+    if (error) return alert('تعذر إضافة الأكواد.');
+    useAppStore.setState((state) => ({ inventory: [...(data ?? []) as DigitalInventory[], ...state.inventory] })); setInventoryText(''); alert(`تمت إضافة ${codes.length} كود.`);
+  }
   const totalSales = orders.reduce((sum, ord) => sum + ord.amount_paid, 0);
   const totalTopups = topupRequests.filter(r => r.status === 'approved').reduce((sum, req) => sum + req.amount, 0);
   const pendingTopups = topupRequests.filter(r => r.status === 'pending').length;
@@ -75,10 +101,9 @@ export default function AdminPage() {
              <div className="space-y-8">
                <div className="flex justify-between items-center mb-6">
                  <h2 className="text-2xl font-bold text-white">إدارة المنتجات</h2>
-                 <button className="flex items-center gap-2 bg-[#D4AF37] text-black px-4 py-2 rounded-xl font-bold text-sm hover:bg-[#F5D061] transition-colors">
-                   <Plus size={16} /> إضافة منتج
-                 </button>
+                 <button onClick={() => { setEditingProduct(null); setProductForm({ name: '', description: '', price: '', sale_price: '', image_url: '', is_active: true }) }} className="flex items-center gap-2 bg-[#D4AF37] text-black px-4 py-2 rounded-xl font-bold text-sm hover:bg-[#F5D061] transition-colors"><Plus size={16} /> إضافة منتج</button>
                </div>
+               <form onSubmit={saveProduct} className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-3xl border border-[#D4AF37]/20 bg-[#16161D] p-6" dir="rtl"><input required value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} placeholder="اسم المنتج" className="rounded-xl bg-[#0B0B0E] p-3 text-white" /><input value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} placeholder="الوصف" className="rounded-xl bg-[#0B0B0E] p-3 text-white" /><input required type="number" min="0.01" step="0.01" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} placeholder="السعر" className="rounded-xl bg-[#0B0B0E] p-3 text-white" /><input type="number" min="0" step="0.01" value={productForm.sale_price} onChange={(e) => setProductForm({ ...productForm, sale_price: e.target.value })} placeholder="سعر العرض (اختياري)" className="rounded-xl bg-[#0B0B0E] p-3 text-white" /><input value={productForm.image_url} onChange={(e) => setProductForm({ ...productForm, image_url: e.target.value })} placeholder="رابط صورة المنتج" dir="ltr" className="rounded-xl bg-[#0B0B0E] p-3 text-white md:col-span-2" /><label className="flex items-center gap-2 text-gray-300"><input type="checkbox" checked={productForm.is_active} onChange={(e) => setProductForm({ ...productForm, is_active: e.target.checked })} /> المنتج فعال</label><button disabled={productBusy} className="rounded-xl bg-[#D4AF37] px-4 py-3 font-bold text-black md:col-span-2">{productBusy ? 'جارٍ الحفظ...' : editingProduct ? 'حفظ التعديل' : 'حفظ المنتج'}</button></form>
                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                  {products.map(p => (
                    <div key={p.id} className="bg-[#16161D] border border-white/5 rounded-2xl p-4 flex gap-4 items-center">
@@ -88,7 +113,7 @@ export default function AdminPage() {
                      <div className="flex-1 min-w-0">
                        <h3 className="font-bold text-white truncate">{p.name}</h3>
                        <p className="text-[#F5D061] font-mono text-sm">{p.sale_price || p.price} <span className="text-[10px]">SAR</span></p>
-                       <p className="text-xs text-gray-500 mt-1">{p.is_active ? 'مفعل' : 'معطل'}</p>
+                       <p className="text-xs text-gray-500 mt-1">{p.is_active ? 'مفعل' : 'معطل'}</p><button type="button" onClick={() => { setEditingProduct(p); setProductForm({ name: p.name, description: p.description || '', price: String(p.price), sale_price: p.sale_price ? String(p.sale_price) : '', image_url: p.image_url || '', is_active: p.is_active }) }} className="mt-2 text-xs text-[#F5D061]">تعديل</button>
                      </div>
                    </div>
                  ))}
@@ -100,10 +125,9 @@ export default function AdminPage() {
              <div className="space-y-8">
                <div className="flex justify-between items-center mb-6">
                  <h2 className="text-2xl font-bold text-white">المخزون الرقمي (الأكواد)</h2>
-                 <button className="flex items-center gap-2 bg-gray-800 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-gray-700 border border-gray-700 transition-colors">
-                   <Plus size={16} /> إضافة أكواد (Bulk)
-                 </button>
+                 <button onClick={() => setInventoryText('')} className="flex items-center gap-2 bg-gray-800 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-gray-700 border border-gray-700 transition-colors"><Plus size={16} /> إضافة أكواد (Bulk)</button>
                </div>
+               <form onSubmit={addInventory} className="space-y-4 rounded-3xl border border-white/5 bg-[#16161D] p-6" dir="rtl"><select value={inventoryProduct} onChange={(e) => setInventoryProduct(e.target.value)} className="w-full rounded-xl bg-[#0B0B0E] p-3 text-white"><option value="">اختر المنتج</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><textarea required value={inventoryText} onChange={(e) => setInventoryText(e.target.value)} placeholder="أدخل كل كود في سطر مستقل" rows={5} className="w-full rounded-xl bg-[#0B0B0E] p-3 font-mono text-white" /><button disabled={inventoryBusy} className="rounded-xl bg-[#D4AF37] px-5 py-3 font-bold text-black">{inventoryBusy ? 'جارٍ الإضافة...' : 'إضافة الأكواد'}</button></form>
                <div className="bg-[#16161D] border border-white/5 rounded-3xl overflow-hidden">
                  <table className="w-full text-left border-collapse" dir="rtl">
                     <thead className="bg-[#0B0B0E] border-b border-white/5">
