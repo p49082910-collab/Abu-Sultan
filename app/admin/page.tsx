@@ -83,7 +83,7 @@ export default function AdminPage() {
                  {products.map(p => (
                    <div key={p.id} className="bg-[#16161D] border border-white/5 rounded-2xl p-4 flex gap-4 items-center">
                      <div className="w-20 h-20 relative rounded-lg overflow-hidden shrink-0 bg-[#0B0B0E]">
-                        <Image src={p.image_url} alt={p.name} fill className="object-cover" referrerPolicy="no-referrer" />
+                        {p.image_url ? <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} /> : <PackageSearch className="text-gray-600" size={24} />}
                      </div>
                      <div className="flex-1 min-w-0">
                        <h3 className="font-bold text-white truncate">{p.name}</h3>
@@ -151,7 +151,7 @@ export default function AdminPage() {
                  {topupRequests.map(req => (
                    <div key={req.id} className="bg-[#16161D] border border-white/5 rounded-3xl p-6 flex flex-col sm:flex-row items-center gap-6">
                      <div className="w-full sm:w-32 aspect-video bg-[#0B0B0E] rounded-lg relative overflow-hidden shrink-0 border border-white/5">
-                        {req.receipt_image && <Image src={req.receipt_image} alt="Receipt" fill className="object-cover" referrerPolicy="no-referrer" />}
+                        {req.receipt_image ? (req.receipt_image.toLowerCase().includes('.pdf') ? <div className="flex h-full items-center justify-center text-xs text-[#F5D061]">ملف PDF</div> : <img src={req.receipt_image} alt="إثبات التحويل" className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} />) : <span className="text-xs text-gray-600">لا يوجد إثبات</span>}
                      </div>
                      <button type="button" onClick={() => req.receipt_image && setSelectedReceipt(req.receipt_image)} disabled={!req.receipt_image} className="rounded-xl border border-[#D4AF37]/30 px-3 py-2 text-sm text-[#F5D061] disabled:cursor-not-allowed disabled:opacity-40">عرض الإثبات</button>
                      <div className="flex-1 text-center sm:text-right">
